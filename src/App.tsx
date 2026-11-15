@@ -1,11 +1,12 @@
 import { Session } from '@supabase/supabase-js';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { getMembers, getMyGroup, getMyProfile, theme } from './lib/data';
 import { Group, Profile, supabase } from './lib/supabase';
 import { sendPoints, startTracking } from './lib/tracking';
+import { checkForUpdate } from './lib/updates';
 import { AuthScreen } from './screens/AuthScreen';
 import { GroupScreen } from './screens/GroupScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -18,9 +19,38 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
+      <UpdateChecker />
       <Root />
     </SafeAreaProvider>
   );
+}
+
+/** Ao abrir o app (e ao voltar pra ele), avisa se tem versão nova no GitHub. */
+function UpdateChecker() {
+  const lastCheck = useRef(0);
+  const dismissed = useRef(0);
+
+  useEffect(() => {
+    async function check() {
+      if (Date.now() - lastCheck.current < 30 * 60 * 1000) return;
+      lastCheck.current = Date.now();
+      const up = await checkForUpdate();
+      if (!up || up.version === dismissed.current) return;
+      Alert.alert(
+        `Atualização disponível (v${up.version})`,
+        `${up.notes ? up.notes + '\n\n' : ''}Toca em Atualizar, espera baixar e abre o arquivo pra instalar por cima. Seu login continua salvo.`,
+        [
+          { text: 'Depois', style: 'cancel', onPress: () => (dismissed.current = up.version) },
+          { text: 'Atualizar', onPress: () => Linking.openURL(up.url) },
+        ],
+      );
+    }
+    check();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && check());
+    return () => sub.remove();
+  }, []);
+
+  return null;
 }
 
 function Root() {

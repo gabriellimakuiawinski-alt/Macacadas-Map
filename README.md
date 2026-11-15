@@ -13,13 +13,19 @@ App Android para a galera compartilhar a localização em tempo real e ver por o
 ## Como instalar
 
 1. Vá em **Releases** (lado direito da página do repositório) e baixe o `.apk` mais novo.
-2. Mande o arquivo pros amigos (WhatsApp, Drive...). O repositório é privado, então só você consegue baixar direto daqui.
+2. Mande o arquivo pros amigos (WhatsApp, Drive...) ou o link da página de Releases.
 3. No Android, abra o arquivo e permita "instalar apps desconhecidos" quando pedir.
 4. Na permissão de localização, escolha **"Permitir o tempo todo"**.
 5. Se o rastro parar sozinho: Configurações → Apps → Macacadas Map → Bateria → **Sem restrições**.
 
-Cada `push` na branch `main` gera um APK novo automaticamente (GitHub Actions → "Gerar APK").
-Instalar a versão nova por cima da antiga mantém o login.
+## Atualizações
+
+Cada `push` na branch `main` gera um APK novo automaticamente (GitHub Actions → "Gerar APK")
+e publica em Releases. A primeira linha da mensagem do commit vira o texto de "novidades".
+
+Quando alguém abre o app, ele consulta a última Release e, se tiver versão mais nova, mostra
+"Atualização disponível". Um toque baixa o APK; é só abrir e instalar por cima (o login continua).
+Isso precisa que o repositório seja **público** (a API do GitHub não deixa baixar Releases de repositório privado sem login).
 
 ## Primeiro uso
 

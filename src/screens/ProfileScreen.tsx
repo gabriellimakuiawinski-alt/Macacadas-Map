@@ -4,6 +4,7 @@ import { COLORS, theme } from '../lib/data';
 import { Group, Profile, supabase } from '../lib/supabase';
 import { isTracking, startTracking, stopTracking } from '../lib/tracking';
 import { Avatar, Button, Input } from '../lib/ui';
+import { checkForUpdate, currentVersion } from '../lib/updates';
 
 export function ProfileScreen({
   profile,
@@ -127,6 +128,19 @@ export function ProfileScreen({
         }}
         style={{ marginTop: 10, borderWidth: 0 }}
       />
+
+      <Pressable
+        onPress={async () => {
+          const up = await checkForUpdate();
+          if (!up) return Alert.alert('Tudo certo', 'Você já está na versão mais nova.');
+          Alert.alert(`Versão nova (v${up.version})`, up.notes || 'Quer baixar agora?', [
+            { text: 'Depois', style: 'cancel' },
+            { text: 'Atualizar', onPress: () => Linking.openURL(up.url) },
+          ]);
+        }}
+      >
+        <Text style={styles.version}>Macacadas Map v{currentVersion()} · toque pra procurar atualização</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -149,4 +163,5 @@ const styles = StyleSheet.create({
   cardSub: { color: theme.muted, marginTop: 2 },
   code: { color: theme.accent, fontSize: 34, fontWeight: '900', letterSpacing: 6, marginVertical: 10, textAlign: 'center' },
   tip: { color: theme.muted, fontSize: 13, lineHeight: 19 },
+  version: { color: theme.muted, fontSize: 12, textAlign: 'center', marginTop: 24 },
 });

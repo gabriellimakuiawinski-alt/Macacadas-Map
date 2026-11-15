@@ -54,6 +54,14 @@ jobs:
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk "out/MacacadasMap-v${{ github.run_number }}.apk"
 
+      - name: Texto das novidades
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          first=$(printf '%s' "$MSG" | head -n1)
+          printf '%s\n' "${first:-Melhorias e correções.}" > out/notes.md
+          cat out/notes.md
+
       - uses: actions/upload-artifact@v4
         with:
           name: MacacadasMap-v${{ github.run_number }}
@@ -64,6 +72,6 @@ jobs:
         with:
           tag_name: v${{ github.run_number }}
           name: Macacadas Map v${{ github.run_number }}
-          body: Baixe o arquivo .apk abaixo e instale no Android.
+          body_path: out/notes.md
           files: out/*.apk
           make_latest: true

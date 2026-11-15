@@ -1,0 +1,131 @@
+import { Session } from '@supabase/supabase-js';
+import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { getMembers, getMyGroup, getMyProfile, theme } from './lib/data';
+import { Group, Profile, supabase } from './lib/supabase';
+import { sendPoints, startTracking } from './lib/tracking';
+import { AuthScreen } from './screens/AuthScreen';
+import { GroupScreen } from './screens/GroupScreen';
+import { HistoryScreen } from './screens/HistoryScreen';
+import { MapScreen } from './screens/MapScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
+
+type Tab = 'mapa' | 'historico' | 'perfil';
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="light" />
+      <Root />
+    </SafeAreaProvider>
+  );
+}
+
+function Root() {
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [group, setGroup] = useState<Group | null | undefined>(undefined);
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [tab, setTab] = useState<Tab>('mapa');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!session) return;
+    const uid = session.user.id;
+    const [p, g] = await Promise.all([getMyProfile(uid), getMyGroup(uid)]);
+    setProfile(p);
+    setGroup(g);
+    setMembers(g ? await getMembers(g.id) : []);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      setProfile(null);
+      setGroup(undefined);
+      return;
+    }
+    refresh();
+    // manda pontos que ficaram guardados sem internet
+    sendPoints([]);
+  }, [session, refresh]);
+
+  // Liga o rastreamento automaticamente quando entra no grupo com o compartilhamento ligado
+  useEffect(() => {
+    if (!profile?.sharing || !group) return;
+    startTracking().then((r) => {
+      if (r === 'sem-permissao') {
+        Alert.alert('Localização bloqueada', 'Sem permissão de localização o app não consegue te mostrar pra galera.', [
+          { text: 'Abrir configurações', onPress: () => Linking.openSettings() },
+          { text: 'Agora não' },
+        ]);
+      } else if (r === 'sem-segundo-plano') {
+        Alert.alert(
+          'Quase lá',
+          'Pra o rastro continuar com a tela bloqueada, escolhe "Permitir o tempo todo" na permissão de localização.',
+          [{ text: 'Abrir configurações', onPress: () => Linking.openSettings() }, { text: 'Depois' }],
+        );
+      }
+    });
+  }, [profile?.sharing, group?.id]);
+
+  // Mudanças de perfil da galera (cor, nome, pausa) em tempo real
+  useEffect(() => {
+    if (!group) return;
+    const ch = supabase
+      .channel('profiles-live')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => refresh())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [group?.id, refresh]);
+
+  if (session === undefined || (session && group === undefined)) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={theme.accent} size="large" />
+      </View>
+    );
+  }
+  if (!session) return <AuthScreen />;
+  if (!group || !profile) return <GroupScreen onDone={refresh} />;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View style={{ flex: 1 }}>
+        {tab === 'mapa' && <MapScreen me={profile.id} members={members} />}
+        {tab === 'historico' && <HistoryScreen me={profile.id} members={members} />}
+        {tab === 'perfil' && <ProfileScreen profile={profile} group={group} onChanged={refresh} />}
+      </View>
+      <View style={styles.tabs}>
+        <TabBtn label="Mapa" icon="🗺️" on={tab === 'mapa'} onPress={() => setTab('mapa')} />
+        <TabBtn label="Histórico" icon="📅" on={tab === 'historico'} onPress={() => setTab('historico')} />
+        <TabBtn label="Perfil" icon="🐒" on={tab === 'perfil'} onPress={() => setTab('perfil')} />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function TabBtn({ label, icon, on, onPress }: { label: string; icon: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={styles.tab} onPress={onPress}>
+      <Text style={{ fontSize: 20, opacity: on ? 1 : 0.5 }}>{icon}</Text>
+      <Text style={[styles.tabText, on && { color: theme.accent }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg },
+  safe: { flex: 1, backgroundColor: theme.bg },
+  tabs: { flexDirection: 'row', borderTopWidth: 1, borderColor: theme.border, backgroundColor: theme.bg },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  tabText: { color: theme.muted, fontSize: 12, marginTop: 2, fontWeight: '600' },
+});

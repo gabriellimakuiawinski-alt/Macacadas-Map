@@ -42,10 +42,20 @@ const HTML = `<!DOCTYPE html>
 </head><body><div id="map"></div>
 <script>
   var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([-23.55, -46.63], 12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    maxZoom: 20, subdomains: 'abcd',
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
-  }).addTo(map);
+  // Mapa principal: OpenStreetMap (sem chave). Se falhar, troca sozinho pro mapa da Esri.
+  var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  });
+  var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, attribution: '&copy; Esri, OpenStreetMap'
+  });
+  var okTiles = 0, badTiles = 0, switched = false;
+  osm.on('tileload', function(){ okTiles++; });
+  osm.on('tileerror', function(){
+    badTiles++;
+    if (!switched && badTiles >= 4 && okTiles === 0) { switched = true; map.removeLayer(osm); esri.addTo(map); }
+  });
+  osm.addTo(map);
   var layer = L.layerGroup().addTo(map);
   var lastBounds = null, fittedOnce = false;
 

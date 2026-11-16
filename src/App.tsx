@@ -1,9 +1,13 @@
+import { LuckiestGuy_400Regular } from '@expo-google-fonts/luckiest-guy';
+import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { Session } from '@supabase/supabase-js';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { getMembers, getMyGroup, getMyProfile, theme } from './lib/data';
+import { Hand, Icon } from './lib/ui';
 import { Group, Profile, supabase } from './lib/supabase';
 import { sendPoints, startTracking } from './lib/tracking';
 import { checkForUpdate } from './lib/updates';
@@ -16,9 +20,11 @@ import { ProfileScreen } from './screens/ProfileScreen';
 type Tab = 'mapa' | 'historico' | 'perfil';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ LuckiestGuy_400Regular, PatrickHand_400Regular });
+  if (!fontsLoaded) return <View style={styles.center} />;
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <UpdateChecker />
       <Root />
     </SafeAreaProvider>
@@ -120,7 +126,7 @@ function Root() {
   if (session === undefined || (session && group === undefined)) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={theme.accent} size="large" />
+        <ActivityIndicator color={theme.ink} size="large" />
       </View>
     );
   }
@@ -128,34 +134,48 @@ function Root() {
   if (!group || !profile) return <GroupScreen onDone={refresh} />;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={{ flex: 1 }}>
         {tab === 'mapa' && <MapScreen me={profile.id} members={members} />}
         {tab === 'historico' && <HistoryScreen me={profile.id} members={members} />}
         {tab === 'perfil' && <ProfileScreen profile={profile} group={group} onChanged={refresh} />}
       </View>
-      <View style={styles.tabs}>
-        <TabBtn label="Mapa" icon="🗺️" on={tab === 'mapa'} onPress={() => setTab('mapa')} />
-        <TabBtn label="Histórico" icon="📅" on={tab === 'historico'} onPress={() => setTab('historico')} />
-        <TabBtn label="Perfil" icon="🐒" on={tab === 'perfil'} onPress={() => setTab('perfil')} />
-      </View>
+      <SafeAreaView edges={['bottom']} style={styles.tabs}>
+        <TabBtn label="Mapa" icon="map" on={tab === 'mapa'} onPress={() => setTab('mapa')} />
+        <TabBtn label="Histórico" icon="calendar" on={tab === 'historico'} onPress={() => setTab('historico')} />
+        <TabBtn label="Perfil" icon="person" on={tab === 'perfil'} onPress={() => setTab('perfil')} />
+      </SafeAreaView>
     </SafeAreaView>
   );
 }
 
-function TabBtn({ label, icon, on, onPress }: { label: string; icon: string; on: boolean; onPress: () => void }) {
+function TabBtn({ label, icon, on, onPress }: { label: string; icon: 'map' | 'calendar' | 'person'; on: boolean; onPress: () => void }) {
   return (
-    <Pressable style={styles.tab} onPress={onPress}>
-      <Text style={{ fontSize: 20, opacity: on ? 1 : 0.5 }}>{icon}</Text>
-      <Text style={[styles.tabText, on && { color: theme.accent }]}>{label}</Text>
+    <Pressable style={styles.tab} onPress={onPress} accessibilityRole="tab" accessibilityState={{ selected: on }}>
+      <View style={[styles.tabIcon, on && styles.tabIconOn]}>
+        <Icon name={icon} size={24} />
+      </View>
+      <Hand size={17} style={{ lineHeight: 18 }}>
+        {label}
+      </Hand>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg },
-  safe: { flex: 1, backgroundColor: theme.bg },
-  tabs: { flexDirection: 'row', borderTopWidth: 1, borderColor: theme.border, backgroundColor: theme.bg },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  tabText: { color: theme.muted, fontSize: 12, marginTop: 2, fontWeight: '600' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
+  safe: { flex: 1, backgroundColor: theme.paper },
+  tabs: { flexDirection: 'row', borderTopWidth: 3, borderColor: theme.ink, backgroundColor: theme.banana, paddingTop: 6, paddingBottom: 4 },
+  tab: { flex: 1, alignItems: 'center', minHeight: 56, justifyContent: 'center' },
+  tabIcon: {
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 8,
+    borderBottomLeftRadius: 18,
+  },
+  tabIconOn: { borderColor: theme.ink, backgroundColor: theme.card },
 });

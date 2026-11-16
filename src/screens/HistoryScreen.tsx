@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { addDays, distanceKm, getPoints, groupByUser, startOfDay, theme } from '../lib/data';
 import { MapData, MapWeb, toSegments } from '../lib/MapWeb';
 import { LocationRow, Profile } from '../lib/supabase';
-import { Avatar } from '../lib/ui';
+import { Avatar, Hand, Icon, Sketch, Title } from '../lib/ui';
 
 const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
@@ -32,10 +32,7 @@ export function HistoryScreen({ me, members }: { me: string; members: Profile[] 
   const byUser = useMemo(() => groupByUser(points), [points]);
 
   const data: MapData = useMemo(() => {
-    const trails = members
-      .filter((m) => byUser.has(m.id))
-      .map((m) => ({ id: m.id, color: m.color, segments: toSegments(byUser.get(m.id)!) }));
-    // marca onde cada um terminou o dia
+    const trails = members.filter((m) => byUser.has(m.id)).map((m) => ({ id: m.id, color: m.color, segments: toSegments(byUser.get(m.id)!) }));
     const people = members
       .filter((m) => byUser.has(m.id))
       .map((m) => {
@@ -46,31 +43,47 @@ export function HistoryScreen({ me, members }: { me: string; members: Profile[] 
   }, [byUser, members, me]);
 
   const label = isToday
-    ? 'Hoje'
-    : `${DIAS[day.getDay()]}, ${String(day.getDate()).padStart(2, '0')}/${String(day.getMonth() + 1).padStart(2, '0')}/${day.getFullYear()}`;
+    ? 'HOJE'
+    : `${DIAS[day.getDay()].toUpperCase()}, ${String(day.getDate()).padStart(2, '0')}/${String(day.getMonth() + 1).padStart(2, '0')}`;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.paper }}>
       <View style={styles.header}>
         <View style={styles.dateRow}>
-          <Pressable style={styles.arrow} onPress={() => setDay(addDays(day, -1))}>
-            <Text style={styles.arrowText}>‹</Text>
+          <Pressable accessibilityLabel="Dia anterior" style={styles.arrow} onPress={() => setDay(addDays(day, -1))}>
+            <Icon name="chevL" size={28} />
           </Pressable>
-          <Text style={styles.date}>{label}</Text>
-          <Pressable style={[styles.arrow, isToday && { opacity: 0.3 }]} onPress={() => !isToday && setDay(addDays(day, 1))}>
-            <Text style={styles.arrowText}>›</Text>
+          <Sketch bg={theme.banana} style={{ transform: [{ rotate: '-1.5deg' }] }}>
+            <Title size={22} style={{ paddingHorizontal: 16 }}>
+              {label}
+            </Title>
+          </Sketch>
+          <Pressable
+            accessibilityLabel="Próximo dia"
+            style={[styles.arrow, isToday && { opacity: 0.25 }]}
+            onPress={() => !isToday && setDay(addDays(day, 1))}
+          >
+            <Icon name="chevR" size={28} />
           </Pressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
-          <Pressable style={[styles.pill, selected === 'todos' && styles.pillOn]} onPress={() => setSelected('todos')}>
-            <Text style={[styles.pillText, selected === 'todos' && { color: '#111' }]}>Todos</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 12, paddingBottom: 4 }}>
+          <Pressable onPress={() => setSelected('todos')}>
+            <Sketch bg={selected === 'todos' ? theme.banana : theme.card} variant="b" shadow={3}>
+              <Hand size={18} style={styles.pill}>
+                Todos
+              </Hand>
+            </Sketch>
           </Pressable>
           {members.map((m) => (
-            <Pressable key={m.id} style={[styles.pill, selected === m.id && styles.pillOn]} onPress={() => setSelected(m.id)}>
-              <Avatar name={m.name} color={m.color} size={20} />
-              <Text style={[styles.pillText, { marginLeft: 6 }, selected === m.id && { color: '#111' }]}>
-                {m.id === me ? 'Você' : m.name}
-              </Text>
+            <Pressable key={m.id} onPress={() => setSelected(m.id)}>
+              <Sketch bg={selected === m.id ? theme.banana : theme.card} variant="b" shadow={3}>
+                <View style={[styles.pillRow]}>
+                  <Avatar name={m.name} color={m.color} size={22} />
+                  <Hand size={18} style={{ marginLeft: 6 }}>
+                    {m.id === me ? 'Você' : m.name}
+                  </Hand>
+                </View>
+              </Sketch>
             </Pressable>
           ))}
         </ScrollView>
@@ -79,13 +92,19 @@ export function HistoryScreen({ me, members }: { me: string; members: Profile[] 
       <View style={{ flex: 1 }}>
         <MapWeb data={data} resetKey={`${day.getTime()}-${selected}`} />
         {loading && (
-          <View style={styles.loading}>
-            <ActivityIndicator color={theme.accent} />
+          <View style={styles.float}>
+            <Sketch>
+              <ActivityIndicator color={theme.ink} style={{ padding: 10 }} />
+            </Sketch>
           </View>
         )}
         {!loading && points.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={{ color: theme.text }}>Ninguém se mexeu nesse dia 🙈</Text>
+          <View style={styles.float}>
+            <Sketch>
+              <Hand size={19} style={{ paddingHorizontal: 14, paddingVertical: 6 }}>
+                Ninguém se mexeu nesse dia
+              </Hand>
+            </Sketch>
           </View>
         )}
       </View>
@@ -101,10 +120,12 @@ export function HistoryScreen({ me, members }: { me: string; members: Profile[] 
               return (
                 <View key={m.id} style={styles.statRow}>
                   <View style={[styles.swatch, { backgroundColor: m.color }]} />
-                  <Text style={styles.statName}>{m.id === me ? 'Você' : m.name}</Text>
-                  <Text style={styles.statVal}>
+                  <Hand size={19} style={{ flex: 1 }}>
+                    {m.id === me ? 'Você' : m.name}
+                  </Hand>
+                  <Hand size={18} color={theme.muted}>
                     {distanceKm(pts).toFixed(1)} km · {hhmm(first)}–{hhmm(last)}
-                  </Text>
+                  </Hand>
                 </View>
               );
             })}
@@ -119,27 +140,13 @@ function hhmm(d: Date) {
 }
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: theme.bg, paddingBottom: 10, borderBottomWidth: 1, borderColor: theme.border },
-  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8 },
-  arrow: { width: 48, height: 40, alignItems: 'center', justifyContent: 'center' },
-  arrowText: { color: theme.accent, fontSize: 32, fontWeight: '700' },
-  date: { color: theme.text, fontSize: 18, fontWeight: '800' },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    height: 34,
-  },
-  pillOn: { backgroundColor: theme.accent, borderColor: theme.accent },
-  pillText: { color: theme.text, fontWeight: '600' },
-  loading: { position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: theme.card, padding: 10, borderRadius: 20 },
-  empty: { position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: theme.card, padding: 10, borderRadius: 12 },
-  stats: { backgroundColor: theme.bg, padding: 12, borderTopWidth: 1, borderColor: theme.border, gap: 6 },
+  header: { backgroundColor: theme.paper, paddingBottom: 8, borderBottomWidth: 3, borderColor: theme.ink },
+  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 },
+  arrow: { width: 48, height: 44, alignItems: 'center', justifyContent: 'center' },
+  pill: { paddingHorizontal: 14, paddingVertical: 4 },
+  pillRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 5, paddingRight: 12, paddingVertical: 4 },
+  float: { position: 'absolute', top: 12, alignSelf: 'center' },
+  stats: { backgroundColor: theme.paper, padding: 12, borderTopWidth: 3, borderColor: theme.ink, gap: 4 },
   statRow: { flexDirection: 'row', alignItems: 'center' },
-  swatch: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
-  statName: { color: theme.text, fontWeight: '700', flex: 1 },
-  statVal: { color: theme.muted },
+  swatch: { width: 14, height: 14, borderRadius: 7, marginRight: 8, borderWidth: 2, borderColor: theme.ink },
 });

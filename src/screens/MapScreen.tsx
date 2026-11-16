@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { getLatestPositions, getPoints, startOfDay, theme } from '../lib/data';
 import { MapData, MapHandle, MapWeb, toSegments } from '../lib/MapWeb';
 import { LocationRow, Profile, supabase } from '../lib/supabase';
-import { Avatar } from '../lib/ui';
+import { Avatar, Hand, Icon, Sketch, Title } from '../lib/ui';
 
 export function MapScreen({ me, members }: { me: string; members: Profile[] }) {
   const [latest, setLatest] = useState<Record<string, LocationRow>>({});
   const [today, setToday] = useState<LocationRow[]>([]);
   const [showTrails, setShowTrails] = useState(true);
+  const [tick, setTick] = useState(0);
   const map = useRef<MapHandle>(null);
   const ids = useMemo(() => members.map((m) => m.id), [members]);
 
@@ -18,25 +19,42 @@ export function MapScreen({ me, members }: { me: string; members: Profile[] }) {
     setToday(t);
   }, [ids]);
 
+  // Economia de bateria: a conexão ao vivo só fica aberta com o app na tela.
+  // Quando o app vai pro fundo, desliga; quando volta, recarrega uma vez e religa.
   useEffect(() => {
-    load();
-    const ch = supabase
-      .channel('locations-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'locations' }, (payload) => {
-        const row = payload.new as LocationRow;
-        setLatest((prev) => {
-          const cur = prev[row.user_id];
-          if (cur && cur.recorded_at > row.recorded_at) return prev;
-          return { ...prev, [row.user_id]: row };
-        });
-        if (new Date(row.recorded_at) >= startOfDay(new Date())) setToday((prev) => [...prev, row]);
-      })
-      .subscribe();
-    // atualiza o "há X min" e pega qualquer coisa perdida
-    const timer = setInterval(load, 60000);
+    let ch: ReturnType<typeof supabase.channel> | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const goLive = () => {
+      if (ch) return;
+      load();
+      ch = supabase
+        .channel('locations-live')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'locations' }, (payload) => {
+          const row = payload.new as LocationRow;
+          setLatest((prev) => {
+            const cur = prev[row.user_id];
+            if (cur && cur.recorded_at > row.recorded_at) return prev;
+            return { ...prev, [row.user_id]: row };
+          });
+          if (new Date(row.recorded_at) >= startOfDay(new Date())) setToday((prev) => [...prev, row]);
+        })
+        .subscribe();
+      // só atualiza o texto "há X min" (sem internet)
+      timer = setInterval(() => setTick((t) => t + 1), 60000);
+    };
+    const sleep = () => {
+      if (ch) supabase.removeChannel(ch);
+      ch = null;
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    if (AppState.currentState === 'active') goLive();
+    const sub = AppState.addEventListener('change', (st) => (st === 'active' ? goLive() : sleep()));
     return () => {
-      clearInterval(timer);
-      supabase.removeChannel(ch);
+      sub.remove();
+      sleep();
     };
   }, [load]);
 
@@ -57,42 +75,60 @@ export function MapScreen({ me, members }: { me: string; members: Profile[] }) {
       ? members.map((m) => ({
           id: m.id,
           color: m.color,
-          segments: toSegments(
-            today.filter((p) => p.user_id === m.id).sort((a, b) => a.recorded_at.localeCompare(b.recorded_at)),
-          ),
+          segments: toSegments(today.filter((p) => p.user_id === m.id).sort((a, b) => a.recorded_at.localeCompare(b.recorded_at))),
         }))
       : [];
     return { people, trails };
-  }, [latest, today, members, me, showTrails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, today, members, me, showTrails, tick]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.paper }}>
       <MapWeb ref={map} data={data} />
 
-      <View style={styles.topRight}>
-        <Pressable style={styles.fab} onPress={() => map.current?.fit()}>
-          <Text style={styles.fabText}>⤢</Text>
-        </Pressable>
-        <Pressable style={[styles.fab, !showTrails && { opacity: 0.5 }]} onPress={() => setShowTrails((v) => !v)}>
-          <Text style={styles.fabText}>〰</Text>
-        </Pressable>
+      <View style={styles.top} pointerEvents="box-none">
+        <Sketch bg={theme.banana} style={{ transform: [{ rotate: '-2deg' }] }}>
+          <Title size={22} style={{ paddingHorizontal: 14, paddingBottom: 2 }}>
+            MACACADAS MAP
+          </Title>
+        </Sketch>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Pressable accessibilityLabel="Ver todo mundo" onPress={() => map.current?.fit()}>
+            <Sketch variant="b" shadow={3} style={styles.fab}>
+              <View style={styles.fabIn}>
+                <Icon name="expand" size={22} />
+              </View>
+            </Sketch>
+          </Pressable>
+          <Pressable accessibilityLabel="Mostrar ou esconder rastros" onPress={() => setShowTrails((v) => !v)}>
+            <Sketch variant="b" shadow={3} bg={showTrails ? theme.card : '#E6DCC4'} style={styles.fab}>
+              <View style={styles.fabIn}>
+                <Icon name="trail" size={24} color={showTrails ? theme.ink : theme.muted} />
+              </View>
+            </Sketch>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.bottom}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
           {members.map((m) => {
             const pos = latest[m.id];
             return (
-              <Pressable
-                key={m.id}
-                style={[styles.chip, !m.sharing && { opacity: 0.5 }]}
-                onPress={() => pos && map.current?.focus(pos.lat, pos.lng)}
-              >
-                <Avatar name={m.name} color={m.color} size={30} />
-                <View style={{ marginLeft: 8 }}>
-                  <Text style={styles.chipName}>{m.id === me ? 'Você' : m.name}</Text>
-                  <Text style={styles.chipSub}>{!m.sharing ? 'pausado' : pos ? ago(pos.recorded_at) : 'sem sinal ainda'}</Text>
-                </View>
+              <Pressable key={m.id} onPress={() => pos && map.current?.focus(pos.lat, pos.lng)} style={{ opacity: m.sharing ? 1 : 0.6 }}>
+                <Sketch>
+                  <View style={styles.chip}>
+                    <Avatar name={m.name} color={m.color} size={32} />
+                    <View style={{ marginLeft: 8 }}>
+                      <Hand size={18} style={{ lineHeight: 19 }}>
+                        {m.id === me ? 'Você' : m.name}
+                      </Hand>
+                      <Hand size={15} color={theme.muted} style={{ lineHeight: 16 }}>
+                        {!m.sharing ? 'pausado' : pos ? ago(pos.recorded_at) : 'sem sinal ainda'}
+                      </Hand>
+                    </View>
+                  </View>
+                </Sketch>
               </Pressable>
             );
           })}
@@ -111,31 +147,9 @@ function ago(iso: string) {
 }
 
 const styles = StyleSheet.create({
-  topRight: { position: 'absolute', right: 12, top: 12, gap: 10 },
-  fab: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: theme.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  fabText: { color: theme.text, fontSize: 20, fontWeight: '700' },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 12 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(20,20,20,0.92)',
-    borderRadius: 24,
-    paddingVertical: 6,
-    paddingLeft: 6,
-    paddingRight: 14,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  chipName: { color: theme.text, fontWeight: '700' },
-  chipSub: { color: theme.muted, fontSize: 12 },
+  top: { position: 'absolute', left: 12, right: 12, top: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  fab: { width: 49, height: 49 },
+  fabIn: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 14 },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingLeft: 5, paddingRight: 14 },
 });

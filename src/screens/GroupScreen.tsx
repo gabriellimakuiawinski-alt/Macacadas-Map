@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../lib/data';
 import { supabase } from '../lib/supabase';
-import { Button, Input } from '../lib/ui';
+import { Button, Hand, Input, Monkey, Title } from '../lib/ui';
 
 export function GroupScreen({ onDone }: { onDone: () => void }) {
   const [code, setCode] = useState('');
@@ -30,32 +30,42 @@ export function GroupScreen({ onDone }: { onDone: () => void }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Entrar na galera</Text>
-        <Text style={styles.sub}>Se alguém já criou o grupo, coloca o código de convite dele.</Text>
-        <Input value={code} onChangeText={(t) => setCode(t.toUpperCase())} placeholder="Ex: A1B2C3" autoCapitalize="characters" maxLength={6} />
+        <View style={{ alignItems: 'center' }}>
+          <Monkey size={90} />
+        </View>
+        <Title size={30} style={{ textAlign: 'center', marginTop: 8 }}>
+          ENTRAR NA GALERA
+        </Title>
+        <Hand style={styles.sub}>Se alguém já criou o grupo, coloca o código de convite.</Hand>
+        <Input
+          value={code}
+          onChangeText={(t) => setCode(t.toUpperCase())}
+          placeholder="Ex: A1B2C3"
+          autoCapitalize="characters"
+          maxLength={6}
+        />
         <Button title="Entrar no grupo" onPress={join} loading={loading === 'join'} />
 
         <View style={styles.sep}>
           <View style={styles.line} />
-          <Text style={{ color: theme.muted, marginHorizontal: 10 }}>ou</Text>
+          <Hand style={{ marginHorizontal: 10 }}>ou</Hand>
           <View style={styles.line} />
         </View>
 
-        <Text style={styles.sub}>É o primeiro? Cria o grupo e manda o código pros outros.</Text>
-        <Input value={name} onChangeText={setName} placeholder="Nome do grupo" />
+        <Hand style={styles.sub}>É o primeiro? Cria o grupo e manda o código pros outros.</Hand>
+        <Input value={name} onChangeText={setName} placeholder="Nome do grupo" variant="a" />
         <Button kind="ghost" title="Criar grupo novo" onPress={create} loading={loading === 'create'} />
 
-        <Button kind="danger" title="Sair da conta" onPress={() => supabase.auth.signOut()} style={{ marginTop: 40, borderWidth: 0 }} />
+        <Button kind="danger" title="Sair da conta" onPress={() => supabase.auth.signOut()} style={{ marginTop: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.bg },
-  wrap: { padding: 24, paddingTop: 48 },
-  title: { color: theme.text, fontSize: 26, fontWeight: '800', marginBottom: 6 },
-  sub: { color: theme.muted, marginBottom: 14 },
-  sep: { flexDirection: 'row', alignItems: 'center', marginVertical: 28 },
-  line: { flex: 1, height: 1, backgroundColor: theme.border },
+  safe: { flex: 1, backgroundColor: theme.paper },
+  wrap: { padding: 24, paddingTop: 28 },
+  sub: { color: theme.muted, marginBottom: 12, textAlign: 'center' },
+  sep: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
+  line: { flex: 1, height: 3, backgroundColor: theme.ink, borderRadius: 2 },
 });

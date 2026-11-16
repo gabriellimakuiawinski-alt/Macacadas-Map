@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
+import Svg, { Ellipse, Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../lib/data';
+import { fonts, theme } from '../lib/data';
 import { supabase } from '../lib/supabase';
-import { Button, Input } from '../lib/ui';
+import { Button, Hand, Input, Monkey, Title } from '../lib/ui';
 
 export function AuthScreen() {
   const [mode, setMode] = useState<'entrar' | 'cadastrar'>('entrar');
@@ -46,34 +47,60 @@ export function AuthScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-          <Text style={styles.logo}>🐒</Text>
-          <Text style={styles.title}>Macacadas Map</Text>
-          <Text style={styles.sub}>Onde a galera tá e por onde passou</Text>
+    <View style={styles.safe}>
+      <JungleTop />
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+            <View style={{ alignItems: 'center', marginTop: 30 }}>
+              <Monkey size={140} />
+            </View>
+            <Title
+              size={44}
+              color={theme.banana}
+              style={styles.title}
+            >
+              MACACADAS{'\n'}MAP
+            </Title>
+            <Hand size={21} style={{ textAlign: 'center', marginBottom: 26 }}>
+              Onde a galera tá e por onde passou
+            </Hand>
 
-          {mode === 'cadastrar' && <Input label="Seu nome" value={name} onChangeText={setName} placeholder="Como a galera te chama" />}
-          <Input
-            label="E-mail"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholder="voce@email.com"
-          />
-          <Input label="Senha" value={password} onChangeText={setPassword} secureTextEntry placeholder="mínimo 6 caracteres" />
+            {mode === 'cadastrar' && <Input label="Seu nome" value={name} onChangeText={setName} placeholder="Como a galera te chama" variant="a" />}
+            <Input
+              label="E-mail"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholder="voce@email.com"
+            />
+            <Input label="Senha" value={password} onChangeText={setPassword} secureTextEntry placeholder="mínimo 6 caracteres" variant="a" />
 
-          <Button title={mode === 'entrar' ? 'Entrar' : 'Criar conta'} onPress={submit} loading={loading} style={{ marginTop: 8 }} />
-          <Button
-            kind="ghost"
-            title={mode === 'entrar' ? 'Não tenho conta' : 'Já tenho conta'}
-            onPress={() => setMode(mode === 'entrar' ? 'cadastrar' : 'entrar')}
-            style={{ marginTop: 10 }}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Button title={mode === 'entrar' ? 'Bora!' : 'Criar conta'} onPress={submit} loading={loading} style={{ marginTop: 10 }} />
+            <Button
+              kind="link"
+              title={mode === 'entrar' ? 'Não tenho conta ainda' : 'Já tenho conta'}
+              onPress={() => setMode(mode === 'entrar' ? 'cadastrar' : 'entrar')}
+              style={{ marginTop: 10 }}
+            />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+/** Folhagem da selva no topo da tela. */
+function JungleTop() {
+  return (
+    <Svg width="100%" height={210} viewBox="0 0 390 210" preserveAspectRatio="none" style={StyleSheet.absoluteFill}>
+      <Path d="M-10 -10 H 400 V 130 C 330 170, 270 120, 200 150 S 70 180, -10 140 Z" fill={theme.jungle} stroke={theme.ink} strokeWidth="3" />
+      <Path d="M30 -10 C 40 40, 20 70, 40 100" stroke={theme.ink} strokeWidth="3" fill="none" />
+      <Path d="M360 -10 C 350 50, 372 90, 352 128" stroke={theme.ink} strokeWidth="3" fill="none" />
+      <Ellipse cx="40" cy="106" rx="14" ry="8" fill="#7CCB7E" stroke={theme.ink} strokeWidth="2.5" transform="rotate(-30 40 106)" />
+      <Ellipse cx="352" cy="134" rx="14" ry="8" fill="#7CCB7E" stroke={theme.ink} strokeWidth="2.5" transform="rotate(25 352 134)" />
+    </Svg>
   );
 }
 
@@ -86,9 +113,17 @@ function traduz(msg: string) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.bg },
-  wrap: { padding: 24, paddingTop: 60 },
-  logo: { fontSize: 64, textAlign: 'center' },
-  title: { color: theme.accent, fontSize: 32, fontWeight: '900', textAlign: 'center' },
-  sub: { color: theme.muted, textAlign: 'center', marginBottom: 32, marginTop: 4 },
+  safe: { flex: 1, backgroundColor: theme.paper },
+  wrap: { padding: 26, paddingBottom: 40 },
+  title: {
+    textAlign: 'center',
+    lineHeight: 46,
+    marginTop: 6,
+    marginBottom: 6,
+    fontFamily: fonts.title,
+    textShadowColor: theme.ink,
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 1,
+    transform: [{ rotate: '-2deg' }],
+  },
 });

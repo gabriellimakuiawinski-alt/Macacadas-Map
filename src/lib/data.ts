@@ -1,16 +1,34 @@
 import { Group, LocationRow, Profile, supabase } from './supabase';
 
-export const COLORS = ['#F5B700', '#FF5A5F', '#3DDC97', '#4EA8FF', '#B46CFF', '#FF8C42', '#00D1C1', '#FF6FB5'];
+export const COLORS = ['#FF6B5B', '#FFC93C', '#2E9E5B', '#5B7CFA', '#B46CFF', '#FF8C42', '#00B5A5', '#FF6FB5'];
 
 export const theme = {
-  bg: '#121212',
-  card: '#1E1E1E',
-  border: '#2C2C2C',
-  text: '#F2F2F2',
-  muted: '#9A9A9A',
-  accent: '#F5B700',
-  danger: '#FF5A5F',
+  paper: '#FFF6E0', // fundo creme
+  card: '#FFFDF5',
+  ink: '#1F1A17', // contornos e texto
+  muted: '#5C5248',
+  banana: '#FFC93C',
+  jungle: '#2E9E5B',
+  coral: '#FF6B5B',
+  // nomes antigos, usados em alguns lugares
+  bg: '#FFF6E0',
+  text: '#1F1A17',
+  border: '#1F1A17',
+  accent: '#FFC93C',
+  danger: '#D93A2B',
 };
+
+export const fonts = {
+  title: 'LuckiestGuy_400Regular',
+  hand: 'PatrickHand_400Regular',
+};
+
+/** Cor do texto que fica legível em cima da cor dada. */
+export function inkOn(hex: string) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1F1A17' : '#FFF6E0';
+}
 
 export async function getMyProfile(userId: string): Promise<Profile | null> {
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();

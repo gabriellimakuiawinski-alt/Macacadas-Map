@@ -27,6 +27,15 @@ Quando alguém abre o app, ele consulta a última Release e, se tiver versão ma
 "Atualização disponível". Um toque baixa o APK; é só abrir e instalar por cima (o login continua).
 Isso precisa que o repositório seja **público** (a API do GitHub não deixa baixar Releases de repositório privado sem login).
 
+## Bateria
+
+O rastreamento troca sozinho entre dois modos (`src/lib/tracking.ts`):
+
+- **Andando**: GPS preciso, leitura a cada ~15 s, entregue em lotes de ~1 min (o celular acorda e usa a internet uma vez por minuto).
+- **Parado** (depois de ~4 min no mesmo lugar): sem GPS forte, só Wi-Fi/antenas, leitura a cada ~2 min. Volta pro modo andando quando a pessoa se afasta ~120 m.
+
+Só salva ponto se andou 25 m (ou a cada 10 min parado), descarta leituras imprecisas e o mapa desliga a conexão ao vivo quando o app vai pro fundo.
+
 ## Primeiro uso
 
 1. Um de vocês cria a conta e toca em **Criar grupo novo**.

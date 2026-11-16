@@ -42,7 +42,8 @@
             "usesCleartextTraffic": false
           }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

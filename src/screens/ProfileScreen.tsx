@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
 import { COLORS, theme } from '../lib/data';
 import { Group, Profile, supabase } from '../lib/supabase';
 import { isTracking, startTracking, stopTracking } from '../lib/tracking';
-import { Avatar, Button, Input } from '../lib/ui';
+import { Avatar, Button, Hand, Icon, Input, Sketch, Title } from '../lib/ui';
 import { checkForUpdate, currentVersion } from '../lib/updates';
 
 export function ProfileScreen({
@@ -66,59 +66,68 @@ export function ProfileScreen({
     ]);
   }
 
+  const on = profile.sharing && !!tracking;
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-      <View style={{ alignItems: 'center', marginBottom: 24 }}>
-        <Avatar name={name} color={profile.color} size={84} />
+    <ScrollView style={{ flex: 1, backgroundColor: theme.paper }} contentContainerStyle={{ padding: 20, paddingBottom: 50 }}>
+      <View style={{ alignItems: 'center', marginBottom: 12 }}>
+        <Avatar name={name} color={profile.color} size={92} />
       </View>
 
       <Input label="Seu nome" value={name} onChangeText={setName} onEndEditing={() => name.trim() && save({ name: name.trim() })} />
 
-      <Text style={styles.label}>Cor do seu rastro</Text>
+      <Hand size={19} style={{ marginBottom: 8 }}>
+        Cor do seu rastro
+      </Hand>
       <View style={styles.colors}>
-        {COLORS.map((c) => (
-          <Pressable
-            key={c}
-            onPress={() => save({ color: c })}
-            style={[styles.color, { backgroundColor: c }, profile.color === c && { borderColor: '#fff', borderWidth: 3 }]}
-          />
-        ))}
+        {COLORS.map((c) => {
+          const picked = profile.color === c;
+          return (
+            <Pressable
+              key={c}
+              accessibilityLabel={picked ? 'Cor escolhida' : 'Escolher cor'}
+              onPress={() => save({ color: c })}
+              style={[styles.ring, picked && styles.ringOn]}
+            >
+              <View style={[styles.color, { backgroundColor: c }]} />
+            </Pressable>
+          );
+        })}
       </View>
 
-      <View style={styles.card}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>Compartilhar localização</Text>
-          <Text style={styles.cardSub}>
-            {profile.sharing && tracking ? 'Ligado: a galera te vê e seu rastro fica salvo' : 'Pausado: ninguém vê onde você está'}
-          </Text>
+      <Sketch style={{ marginBottom: 16 }}>
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Title size={19}>{on ? 'COMPARTILHANDO' : 'PAUSADO'}</Title>
+            <Hand size={17} color={theme.muted} style={{ lineHeight: 19 }}>
+              {on ? 'A galera te vê e seu rastro fica salvo' : 'Ninguém vê onde você está'}
+            </Hand>
+          </View>
+          <Switch value={on} onValueChange={toggleSharing} trackColor={{ true: theme.jungle, false: '#CFC4AE' }} thumbColor={theme.card} />
         </View>
-        <Switch
-          value={profile.sharing && !!tracking}
-          onValueChange={toggleSharing}
-          trackColor={{ true: theme.accent, false: theme.border }}
-          thumbColor="#fff"
-        />
-      </View>
+      </Sketch>
 
-      <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch' }]}>
-        <Text style={styles.cardTitle}>{group.name}</Text>
-        <Text style={styles.cardSub}>Código de convite</Text>
-        <Text style={styles.code}>{group.invite_code}</Text>
-        <Button
-          kind="ghost"
-          title="Mandar convite"
-          onPress={() =>
-            Share.share({ message: `Bora no Macacadas Map! Entra no grupo "${group.name}" com o código ${group.invite_code}` })
-          }
-        />
-      </View>
+      <Sketch bg={theme.banana} variant="b" style={{ marginBottom: 16, transform: [{ rotate: '-1deg' }] }}>
+        <View style={{ alignItems: 'center', padding: 14 }}>
+          <Hand size={19}>Código da galera · {group.name}</Hand>
+          <Title size={40} style={{ letterSpacing: 6, marginVertical: 4 }}>
+            {group.invite_code}
+          </Title>
+          <Button
+            kind="ghost"
+            title="Mandar convite"
+            icon={<Icon name="share" size={20} />}
+            onPress={() => Share.share({ message: `Bora no Macacadas Map! Entra no grupo "${group.name}" com o código ${group.invite_code}` })}
+          />
+        </View>
+      </Sketch>
 
-      <Text style={styles.tip}>
-        Dica: se o rastro some quando o celular fica parado no bolso, vai em Configurações → Apps → Macacadas Map → Bateria e
-        coloca "Sem restrições".
-      </Text>
+      <Hand size={16} color={theme.muted} style={{ lineHeight: 19 }}>
+        Dica: se o rastro parar quando o celular fica no bolso, vai em Configurações → Apps → Macacadas Map → Bateria e coloca "Sem
+        restrições". O app já economiza sozinho: quando você fica parado, ele desliga o GPS forte.
+      </Hand>
 
-      <Button kind="ghost" title="Sair do grupo" onPress={leave} style={{ marginTop: 20 }} />
+      <Button kind="link" title="Sair do grupo" onPress={leave} style={{ marginTop: 16 }} />
       <Button
         kind="danger"
         title="Sair da conta"
@@ -126,7 +135,6 @@ export function ProfileScreen({
           await stopTracking();
           await supabase.auth.signOut();
         }}
-        style={{ marginTop: 10, borderWidth: 0 }}
       />
 
       <Pressable
@@ -138,30 +146,20 @@ export function ProfileScreen({
             { text: 'Atualizar', onPress: () => Linking.openURL(up.url) },
           ]);
         }}
+        style={{ marginTop: 18, minHeight: 44, justifyContent: 'center' }}
       >
-        <Text style={styles.version}>Macacadas Map v{currentVersion()} · toque pra procurar atualização</Text>
+        <Hand size={16} color={theme.muted} style={{ textAlign: 'center' }}>
+          Macacadas Map v{currentVersion()} · toque pra procurar atualização
+        </Hand>
       </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { color: theme.muted, marginBottom: 8, fontSize: 13 },
-  colors: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  color: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: 'transparent' },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  cardTitle: { color: theme.text, fontSize: 16, fontWeight: '700' },
-  cardSub: { color: theme.muted, marginTop: 2 },
-  code: { color: theme.accent, fontSize: 34, fontWeight: '900', letterSpacing: 6, marginVertical: 10, textAlign: 'center' },
-  tip: { color: theme.muted, fontSize: 13, lineHeight: 19 },
-  version: { color: theme.muted, fontSize: 12, textAlign: 'center', marginTop: 24 },
+  colors: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  ring: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  ringOn: { borderWidth: 3, borderColor: theme.ink },
+  color: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: theme.ink },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
 });
